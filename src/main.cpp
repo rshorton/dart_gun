@@ -1,3 +1,26 @@
+// MIT License
+//
+// Copyright (c) 2026 Scott Horton
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "serial_bus_servo.h"
@@ -38,7 +61,7 @@ const uint32_t PAN_TILT_MOVE_MS_PER_DEG = 10;
 SerialServo servo_fire(Serial1, 1, 240, 1000, false);
 // +degrees tilts up
 SerialServo servo_tilt(Serial1, 2, 240, 1000, false);
-// 
+// +degrees pans left
 SerialServo servo_pan(Serial1, 3, 240, 1000, false);
 
 bool invert_pwm = true;
@@ -149,12 +172,6 @@ void aim(float pan_deg, float tilt_deg)
     return;
   }
 
-#if 0  
-  auto pan_duration = PAN_TILT_MOVE_MIN_DURATION + static_cast<uint32_t>(PAN_TILT_MOVE_MAX_DURATION*
-                      abs(cur_pan_deg - pan_deg)/PAN_TILT_MAX_ANGLE_DEG);
-  auto tilt_duration = PAN_TILT_MOVE_MIN_DURATION + static_cast<uint32_t>(PAN_TILT_MOVE_MAX_DURATION*
-                      abs(cur_tilt_deg - tilt_deg)/PAN_TILT_MAX_ANGLE_DEG);
-#endif
   auto pan_duration = static_cast<uint32_t>(PAN_TILT_MOVE_MS_PER_DEG*abs(cur_pan_deg - pan_deg));
   auto tilt_duration = static_cast<uint32_t>(PAN_TILT_MOVE_MS_PER_DEG*abs(cur_tilt_deg - tilt_deg));
 

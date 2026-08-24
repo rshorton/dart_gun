@@ -19,7 +19,6 @@ SerialServo::SerialServo(Stream &serial, int16_t id, int16_t range_degrees, int1
     range_steps_(range_steps),
     invert_(invert)
 {
-    //serial.begin(115200);
 }
 
 uint8_t SerialServo::calc_ck_sum(uint8_t buf[])
