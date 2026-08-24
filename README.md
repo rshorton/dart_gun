@@ -19,5 +19,5 @@ The dart gun consists of these mechanical components:
     *  Custom 3D printed parts
 
 ### TODO
-  * Add control via serial port for aiming and firing.
+  * Add control via REST interface and a simple webui.
 
