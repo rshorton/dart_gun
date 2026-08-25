@@ -22,9 +22,17 @@
 
 
 #include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
 #include <ArduinoJson.h> // Requires the "ArduinoJson" library by Benoit Blanchon
 #include <SoftwareSerial.h>
 #include "serial_bus_servo.h"
+
+#if USE_WIFI == 1  
+  #pragma message "Building for WIFI"
+#else
+  #pragma message "Not building for WIFI"
+#endif
 
 #undef USE_GUN_ENABLE_PIN
 
@@ -41,6 +49,9 @@
 #define TARGETING_LASER_OUT   6   // Aiming laser
 
 namespace {
+
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PW;
 
 const float PAN_TILT_MAX_ANGLE_DEG = 270.0f;
 const float TILT_0_DEG = (-11.7f + PAN_TILT_MAX_ANGLE_DEG/2.0f);
@@ -68,6 +79,8 @@ SerialServo servo_fire(Serial1, 1, 240, 1000, false);
 SerialServo servo_tilt(Serial1, 2, 240, 1000, false);
 // +degrees pans left
 SerialServo servo_pan(Serial1, 3, 240, 1000, false);
+
+WebServer server(80);
 
 bool invert_pwm = true;
 bool flywheel_on = false;
@@ -98,7 +111,7 @@ const int num_tilt_test_angles = sizeof(tilt_test_angles)/sizeof(float);
 template <typename T>
 constexpr int sgn(T val)
 {
-    return (T(0) < val) - (val < T(0));
+  return (T(0) < val) - (val < T(0));
 }
 
 void log_message(int level, const char * fmt, ...)
@@ -410,16 +423,41 @@ void run_firing()
   set_push_bullet_into_flywheel(false);
 }
 
-// Packs current system status variables into a JSON object and prints to Serial
-void send_status_response() {
-  StaticJsonDocument<128> responseDoc;
-  
-  responseDoc["empty"] = !is_dart_present();
-  responseDoc["pan_angle"] = cur_pan_deg;
-  responseDoc["tilt_angle"] = cur_tilt_deg;
+void get_status_json(JsonDocument& doc)
+{
+  doc["empty"] = !is_dart_present();;
+  doc["pan_angle"] = cur_pan_deg;
+  doc["tilt_angle"] = cur_tilt_deg;
+}
 
-  serializeJson(responseDoc, Serial);
+// Packs current system status variables into a JSON object and prints to Serial
+void send_status_response()
+{
+  StaticJsonDocument<128> response_doc;
+  get_status_json(response_doc);
+  serializeJson(response_doc, Serial);
   Serial.println(); // Send newline terminator
+}
+
+void do_cmd_reset()
+{
+    aim(0.0f, 0.0f);
+}
+
+void do_cmd_fire(uint8_t speed, int8_t pan_angle, int8_t tilt_angle, uint8_t fire_count)
+{
+  req_pan_angle = pan_angle;
+  req_tilt_angle = tilt_angle;
+
+  if (speed == 3) {
+    fly_wheel_speed = FLYWHEEL_SPEED_FULL;
+  } else if (speed == 2) {
+    fly_wheel_speed = FLYWHEEL_SPEED_MED;
+  } else {
+    fly_wheel_speed = FLYWHEEL_SPEED_LOW;
+  }
+
+  fire_cnt += fire_count;
 }
 
 // Parses the JSON command and executes the matching logic
@@ -442,24 +480,11 @@ void execute_command(String jsonString)
     int8_t tilt_angle = doc["args"]["tilt_angle"] | 0;
     uint8_t count = doc["args"]["count"] | 0;
 
-    req_pan_angle = pan_angle;
-    req_tilt_angle = tilt_angle;
-
-    if (speed == 3) {
-      fly_wheel_speed = FLYWHEEL_SPEED_FULL;
-    } else if (speed == 2) {
-      fly_wheel_speed = FLYWHEEL_SPEED_MED;
-    } else {
-      fly_wheel_speed = FLYWHEEL_SPEED_LOW;
-    }
-
-    fire_cnt += count;
-
+    do_cmd_fire(speed, pan_angle, tilt_angle, count);
     send_status_response();
   } 
   else if (strcmp(command_name, "reset") == 0) {
-    // Reset state to defaults
-    aim(0.0f, 0.0f);
+    do_cmd_reset();
     send_status_response();
   } 
   else if (strcmp(command_name, "get_status") == 0) {
@@ -482,6 +507,81 @@ void process_commands()
   }
 }
 
+void handle_rest_get_status() {
+  StaticJsonDocument<128> responseDoc;
+  get_status_json(responseDoc);
+  
+  String responseBuffer;
+  serializeJson(responseDoc, responseBuffer);
+  server.send(200, "application/json", responseBuffer);
+}
+
+void handle_rest_reset() {
+  do_cmd_reset();
+
+  StaticJsonDocument<128> responseDoc;
+  get_status_json(responseDoc);
+  
+  String responseBuffer;
+  serializeJson(responseDoc, responseBuffer);
+  server.send(200, "application/json", responseBuffer);
+}
+
+void handle_rest_fire()
+{
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"error\":\"Missing body\"}");
+    return;
+  }
+
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, server.arg("plain"));
+
+  if (error) {
+    server.send(400, "application/json", "{\"error\":\"Malformed JSON\"}");
+    return;
+  }
+
+  // Extract parameters securely from the incoming REST request body
+  uint8_t speed = doc["speed"] | 0;
+  int8_t pan_angle = doc["pan_angle"] | 0;
+  int8_t tilt_angle = doc["tilt_angle"] | 0;
+  uint8_t count = doc["count"] | 0;
+
+  do_cmd_fire(speed, pan_angle, tilt_angle, count);
+
+  StaticJsonDocument<128> responseDoc;
+  get_status_json(responseDoc);
+  
+  String responseBuffer;
+  serializeJson(responseDoc, responseBuffer);
+  server.send(200, "application/json", responseBuffer);
+}
+
+void init_server()
+{
+  // Initialize Network Connection
+  Serial.print("Connecting to Wi-Fi Network: ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWi-Fi Connected Successfully!");
+  Serial.print("Local IP Address to query REST: ");
+  Serial.println(WiFi.localIP());
+
+  // Define API Router Endpoints
+  server.on("/api/status", HTTP_GET, handle_rest_get_status);
+  server.on("/api/reset", HTTP_POST, handle_rest_reset);
+  server.on("/api/fire", HTTP_POST, handle_rest_fire);
+  
+  server.begin();
+  Serial.println("REST Web Server Engine started on port 80.");
+}
 
 } // namespace
 
@@ -514,6 +614,10 @@ void setup()
     run_test();
   }
 
+#if USE_WIFI==1  
+  init_server();
+#endif  
+
   log_message(LOG_LVL_DEBUG, "running normal mode");
   set_barrel_led(true);
   delay(500);
@@ -524,6 +628,9 @@ void setup()
 void loop()
 {
   if (fire_cnt == 0) {
+#if USE_WIFI==1  
+    server.handleClient(); 
+#endif    
     process_commands();
   }    
   run_firing();

@@ -18,6 +18,110 @@ The dart gun consists of these mechanical components:
     *  MOSFET for controller the motors
     *  Custom 3D printed parts
 
-### TODO
-  * Add control via REST interface and a simple webui.
+
+## Control Interfaces
+
+The dart gun can be controlled by either a serial port REST interface via WIFI.  Both use similar JSON-based command structures.
+
+### Serial port
+
+Configure your serial monitor to 115200 baud and set the line ending option to Newline (LF).
+
+#### Commands
+
+**Fire** - Sends command to fire one or more darts
+
+* **Send:**
+    
+  {"name":"fire", "args":{"speed": (3-full, 2-med, 1-low),"pan_angle": (-45 to 45 degress),"tilt_angle": (-30 to 30 degrees),"count": (number of times to fire>)}}
+    
+* **Receives:**
+
+  {"empty": (true if no more darts in magazine),"pan_angle": (angle),"tilt_angle": (angle)}
+    
+**Reset** - Resets pan-tilt position
+
+* **Send:**
+
+  {"name":"reset"}
+
+* **Receive:** same as fire command
+    
+**Get Status** - Gets the status
+
+* **Send:**
+
+  {"name":"get_status"}
+
+* **Receive:** same as fire command
+
+### REST
+
+The build looks for two ENV variables to specify how to connect WIFI:
+
+* USE_WIFI  (0 or 1)
+* WIFI_SSID
+* WIFI_PW
+
+Set USE_WIFI in the platform.ini file.  You can also set WIFI_SSID and WIFI_PW in that file. Or, if using VSCode, you can specify the values in the settings.ini file using:
+
+    "terminal.integrated.env.linux": {
+       "DART_GUN_WIFI_SSID": "<set this>",
+       "DART_GUN_WIFI_PW": "<set this>"
+    },
+
+The latter avoids accidently checking in the pw in the platform.ini file.
+
+**Get Status**
+
+* **Method:** GET /api/status
+
+* **Sent:** None
+
+* **Response (200 OK):** same as for serial commands
+
+* **Test command:**
+
+```
+ curl -X GET http://192.168.1.159/api/status
+```
+
+#### Reset
+
+* **Method:** POST /api/resetPayload
+
+* **Sent:** None
+
+* **Response (200 OK):** same as for serial commands
+
+* **Test command:**
+
+```
+ curl -X POST http://192.168.1.159/api/reset
+```
+
+#### Fire
+
+* **Method:** POST /api/fire
+
+* **Header Required:** Content-Type: application/jsonPayload
+
+* **Sent:**
+
+* json{
+  "speed": <see serial fire command>,
+  "pan_angle": <see serial fire command>,
+  "tilt_angle":<see serial fire command>,
+  "count": <see serial fire command>
+}
+
+* **Response (200 OK):** same as for serial commands
+
+* **Test command:**
+
+```
+curl -X POST http://192.168.1.159/api/fire \
+     -H "Content-Type: application/json" \
+     -d '{"speed":3,"pan_angle":-30,"tilt_angle":15,"count":1}'
+```
 
