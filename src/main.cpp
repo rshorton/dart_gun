@@ -507,7 +507,9 @@ void process_commands()
   }
 }
 
-void handle_rest_get_status() {
+void handle_rest_get_status()
+{
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   StaticJsonDocument<128> responseDoc;
   get_status_json(responseDoc);
   
@@ -516,8 +518,11 @@ void handle_rest_get_status() {
   server.send(200, "application/json", responseBuffer);
 }
 
-void handle_rest_reset() {
+void handle_rest_reset()
+{
   do_cmd_reset();
+
+  server.sendHeader("Access-Control-Allow-Origin", "*");
 
   StaticJsonDocument<128> responseDoc;
   get_status_json(responseDoc);
@@ -529,6 +534,8 @@ void handle_rest_reset() {
 
 void handle_rest_fire()
 {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+
   if (!server.hasArg("plain")) {
     server.send(400, "application/json", "{\"error\":\"Missing body\"}");
     return;
@@ -558,6 +565,13 @@ void handle_rest_fire()
   server.send(200, "application/json", responseBuffer);
 }
 
+void handle_options() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+  server.send(204); // No content needed for preflight
+}
+
 void init_server()
 {
   // Initialize Network Connection
@@ -575,6 +589,7 @@ void init_server()
   Serial.println(WiFi.localIP());
 
   // Define API Router Endpoints
+  server.on("/api/fire", HTTP_OPTIONS, handle_options);  
   server.on("/api/status", HTTP_GET, handle_rest_get_status);
   server.on("/api/reset", HTTP_POST, handle_rest_reset);
   server.on("/api/fire", HTTP_POST, handle_rest_fire);

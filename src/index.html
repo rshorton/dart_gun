@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dart Gun Controller</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --primary: #007bff;
+            --danger: #dc3545;
+            --text: #333333;
+            --border: #cccccc;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2 { margin-top: 0; color: #222; border-bottom: 2px solid var(--bg-color); padding-bottom: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: span 2; }
+        label { font-size: 12px; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; }
+        input { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+        button { 
+            padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; 
+            cursor: pointer; transition: background 0.2s; font-size: 14px;
+        }
+        .btn-primary { background-color: var(--primary); color: white; width: 100%; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-danger:hover { background-color: #bd2130; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #545b62; }
+        .status-val { font-family: monospace; font-size: 16px; font-weight: bold; }
+        .log-box { 
+            background: #222; color: #00ff00; font-family: monospace; 
+            padding: 10px; border-radius: 4px; max-height: 120px; overflow-y: auto; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Device Connection Setup -->
+    <div class="card">
+        <h2>Dart Gun Configuration</h2>
+        <div class="form-group">
+            <label for="ipAddress">IP Address</label>
+            <!-- Change this default value to match your hardware IP -->
+            <input type="text" id="ipAddress" value="192.168.1.159" placeholder="e.g. 192.168.1.159">
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Status</h2>
+        <div class="grid">
+            <div class="form-group">
+                <label>Dart Magazine Empty</label>
+                <div id="statusEmpty" class="status-val">--</div>
+            </div>
+            <div class="form-group">
+                <label>Current Pan</label>
+                <div id="statusPan" class="status-val">--°</div>
+            </div>
+            <div class="form-group">
+                <label>Current Tilt</label>
+                <div id="statusTilt" class="status-val">--°</div>
+            </div>
+        </div>
+        <div class="grid">
+            <button class="btn-secondary" onclick="fetchStatus()">Refresh Status</button>
+            <button class="btn-danger" onclick="triggerReset()">Reset System</button>
+        </div>
+    </div>
+
+    <!-- Firing control -->
+    <div class="card">
+        <h2>Fire Controller</h2>
+        <div class="grid">
+            <div class="form-group">
+                <label for="fireSpeed">Speed (1 - 3 highest)</label>
+                <input type="number" id="fireSpeed" min="0" max="255" value="3">
+            </div>
+            <div class="form-group">
+                <label for="fireCount">Count (1 - 16)</label>
+                <input type="number" id="fireCount" min="0" max="16" value="1">
+            </div>
+            <div class="form-group">
+                <label for="firePan">Pan Angle (-45 to 45)</label>
+                <input type="number" id="firePan" min="-45" max="45" value="0">
+            </div>
+            <div class="form-group">
+                <label for="fireTilt">Tilt Angle (-25 to 25)</label>
+                <input type="number" id="fireTilt" min="-25" max="25" value="0">
+            </div>
+            <div class="form-group full">
+                <button class="btn-primary" onclick="triggerFire()">Execute Fire Sequence</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Console Output Logs -->
+    <div class="card">
+        <h2>Network Event Log</h2>
+        <div id="logBox" class="log-box">System ready. Enter IP address to begin.</div>
+    </div>
+
+</div>
+
+<script>
+    // Appends explicit timestamps alongside events inside the console view
+    function logMessage(msg) {
+        const logBox = document.getElementById('logBox');
+        const timestamp = new Date().toLocaleTimeString();
+        logBox.innerHTML += `\n[${timestamp}] ${msg}`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function getBaseUrl() {
+        const ip = document.getElementById('ipAddress').value.trim();
+        return `http://${ip}`;
+    }
+
+    // Standardizes UI display formatting variables matching system state arrays
+    function updateUiStatus(data) {
+        document.getElementById('statusEmpty').innerText = data.empty ? "YES" : "NO";
+        document.getElementById('statusEmpty').style.color = data.empty ? "var(--danger)" : "#28a745";
+        document.getElementById('statusPan').innerText = `${data.pan_angle}°`;
+        document.getElementById('statusTilt').innerText = `${data.tilt_angle}°`;
+    }
+
+    // GET Request: Status
+    async function fetchStatus() {
+        const url = `${getBaseUrl()}/api/status`;
+        logMessage(`GET requests status payload...`);
+        try {
+            const response = await fetch(url, { method: 'GET', mode: 'cors' });
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const data = await response.json();
+            updateUiStatus(data);
+            logMessage(`Telemetry synchronized successfully.`);
+        } catch (err) {
+            logMessage(`Error fetching status: ${err.message}`);
+        }
+    }
+
+    // POST Request: Fire Payload API Dispatch Command 
+    async function triggerFire() {
+        const url = `${getBaseUrl()}/api/fire`;
+        const payload = {
+            speed: parseInt(document.getElementById('fireSpeed').value) || 0,
+            pan_angle: parseInt(document.getElementById('firePan').value) || 0,
+            tilt_angle: parseInt(document.getElementById('fireTilt').value) || 0,
+            count: parseInt(document.getElementById('fireCount').value) || 0
+        };
+
+        logMessage(`POST fire command variables: ${JSON.stringify(payload)}`);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const data = await response.json();
+            updateUiStatus(data);
+            logMessage(`Fire operational payload verified by hardware.`);
+        } catch (err) {
+            logMessage(`Error executing fire: ${err.message}`);
+        }
+    }
+
+    // POST Request: State Machine Reset Router Call
+    async function triggerReset() {
+        const url = `${getBaseUrl()}/api/reset`;
+        logMessage(`POST clearing hardware registers via reset...`);
+        try {
+            const response = await fetch(url, { method: 'POST', mode: 'cors' });
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const data = await response.json();
+            updateUiStatus(data);
+            logMessage(`Reset confirmed. Coordinates centered.`);
+        } catch (err) {
+            logMessage(`Error running reset sequence: ${err.message}`);
+        }
+    }
+
+    // Poll the microcontroller status automatically every 3 seconds
+    setInterval(() => {
+        const ip = document.getElementById('ipAddress').value.trim();
+        if (ip) { fetchStatus(); }
+    }, 3000);
+</script>
+
+</body>
+</html>
