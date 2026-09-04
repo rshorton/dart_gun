@@ -79,6 +79,7 @@ void SerialServo::move_to_position(int16_t position, uint16_t time)
     buf[8] = GET_HIGH_BYTE(time);
     buf[9] = calc_ck_sum(buf, msgLen);
     serial_.write(buf, msgLen);
+    serial_.flush();
 }
 
 float SerialServo::move_to_angle(float angle, uint16_t time)
