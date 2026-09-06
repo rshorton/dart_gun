@@ -53,6 +53,7 @@ private:
 #if USE_WIFI == 1  
     static void handle_rest_get_status();
     static void handle_rest_reset();
+    static void handle_rest_aim();
     static void handle_rest_fire();
     static void handle_options();
     void init_server();

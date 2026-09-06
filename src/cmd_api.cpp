@@ -97,16 +97,26 @@ void CommandAPI::execute_command(String jsonString)
         return;
     }
 
-    if (strcmp(command_name, "fire") == 0) {
+    if (strcmp(command_name, "aim") == 0) {
         // Extract parameters
-        uint8_t speed = doc["args"]["speed"] | 0;
         int8_t pan_angle = doc["args"]["pan_angle"] | 0;
         int8_t tilt_angle = doc["args"]["tilt_angle"] | 0;
+
+        auto result = control_sm_.aim_cmd(pan_angle, tilt_angle);
+        Logging::log_message(LOG_LVL_INFO, "Api, serial aim: pan: %d, tilt: %d, result: %s",
+                             pan_angle, tilt_angle,
+                             GunControlStateMachine::get_cmd_result_str(result));
+
+        send_cmd_response(result);
+
+    } else if (strcmp(command_name, "fire") == 0) {
+        // Extract parameters
+        uint8_t speed = doc["args"]["speed"] | 0;
         uint8_t count = doc["args"]["count"] | 0;
 
-        auto result = control_sm_.fire_cmd(speed, pan_angle, tilt_angle, count);
-        Logging::log_message(LOG_LVL_INFO, "Api, serial fire: speed: %d, pan: %d, tilt: %d, count: %d, result: %s",
-                             speed, pan_angle, tilt_angle, count,
+        auto result = control_sm_.fire_cmd(speed, count);
+        Logging::log_message(LOG_LVL_INFO, "Api, serial fire: speed: %d, count: %d, result: %s",
+                             speed, count,
                              GunControlStateMachine::get_cmd_result_str(result));
 
         send_cmd_response(result);
@@ -175,6 +185,44 @@ void CommandAPI::handle_rest_reset()
     api->server_.send(200, "application/json", responseBuffer);
 }
 
+void CommandAPI::handle_rest_aim()
+{
+    if (!api) {
+        return;
+    }
+    api->server_.sendHeader("Access-Control-Allow-Origin", "*");
+
+    if (!api->server_.hasArg("plain")) {
+        api->server_.send(400, "application/json", "{\"error\":\"Missing body\"}");
+        return;
+    }
+
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, api->server_.arg("plain"));
+
+    if (error) {
+        api->server_.send(400, "application/json", "{\"error\":\"Malformed JSON\"}");
+        return;
+    }
+
+    // Extract parameters securely from the incoming REST request body
+    int8_t pan_angle = doc["pan_angle"] | 0;
+    int8_t tilt_angle = doc["tilt_angle"] | 0;
+
+    auto result = api->control_sm_.aim_cmd(pan_angle, tilt_angle);
+    Logging::log_message(LOG_LVL_INFO, "Api, rest aim: pan: %d, tilt: %d, result: %s",
+                         pan_angle, tilt_angle,
+                         GunControlStateMachine::get_cmd_result_str(result));
+
+    StaticJsonDocument<128> responseDoc;
+    api->get_status_json(responseDoc);
+    api->set_command_result(responseDoc, result);
+  
+    String responseBuffer;
+    serializeJson(responseDoc, responseBuffer);
+    api->server_.send(200, "application/json", responseBuffer);
+}
+
 void CommandAPI::handle_rest_fire()
 {
     if (!api) {
@@ -197,13 +245,11 @@ void CommandAPI::handle_rest_fire()
 
     // Extract parameters securely from the incoming REST request body
     uint8_t speed = doc["speed"] | 0;
-    int8_t pan_angle = doc["pan_angle"] | 0;
-    int8_t tilt_angle = doc["tilt_angle"] | 0;
     uint8_t count = doc["count"] | 0;
 
-    auto result = api->control_sm_.fire_cmd(speed, pan_angle, tilt_angle, count);
-    Logging::log_message(LOG_LVL_INFO, "Api, rest fire: speed: %d, pan: %d, tilt: %d, count: %d, result: %s",
-                         speed, pan_angle, tilt_angle, count,
+    auto result = api->control_sm_.fire_cmd(speed, count);
+    Logging::log_message(LOG_LVL_INFO, "Api, rest fire: speed: %d, count: %d, result: %s",
+                         speed, count,
                          GunControlStateMachine::get_cmd_result_str(result));
 
     StaticJsonDocument<128> responseDoc;
@@ -241,9 +287,11 @@ void CommandAPI::init_server()
     Logging::log_message(LOG_LVL_INFO, "Local IP Address to query REST: %s", WiFi.localIP().toString());
 
     // Define API Router Endpoints
+    server_.on("/api/aim", HTTP_OPTIONS, handle_options);  
     server_.on("/api/fire", HTTP_OPTIONS, handle_options);  
     server_.on("/api/status", HTTP_GET, handle_rest_get_status);
     server_.on("/api/reset", HTTP_POST, handle_rest_reset);
+    server_.on("/api/aim", HTTP_POST, handle_rest_aim);  
     server_.on("/api/fire", HTTP_POST, handle_rest_fire);
   
     server_.begin();

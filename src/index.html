@@ -92,9 +92,27 @@
         </div>
     </div>
 
+    <!-- Aiming control -->
+    <div class="card">
+        <h2>Aiming Control</h2>
+        <div class="grid">
+            <div class="form-group">
+                <label for="firePan">Pan Angle (-90 to 90)</label>
+                <input type="number" id="firePan" min="-90" max="90" value="0">
+            </div>
+            <div class="form-group">
+                <label for="fireTilt">Tilt Angle (-15 to 15)</label>
+                <input type="number" id="fireTilt" min="-15" max="15" value="0">
+            </div>
+            <div class="form-group full">
+                <button class="btn-primary" onclick="aim()">Aim</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firing control -->
     <div class="card">
-        <h2>Fire Controller</h2>
+        <h2>Firing Control</h2>
         <div class="grid">
             <div class="form-group">
                 <label for="fireSpeed">Speed (1 - 3 highest)</label>
@@ -104,16 +122,8 @@
                 <label for="fireCount">Count (1 - 16)</label>
                 <input type="number" id="fireCount" min="0" max="16" value="1">
             </div>
-            <div class="form-group">
-                <label for="firePan">Pan Angle (-60 to 60)</label>
-                <input type="number" id="firePan" min="-60" max="60" value="0">
-            </div>
-            <div class="form-group">
-                <label for="fireTilt">Tilt Angle (-15 to 15)</label>
-                <input type="number" id="fireTilt" min="-15" max="15" value="0">
-            </div>
             <div class="form-group full">
-                <button class="btn-primary" onclick="triggerFire()">Execute Fire Sequence</button>
+                <button class="btn-primary" onclick="triggerFire()">Fire</button>
             </div>
         </div>
     </div>
@@ -131,7 +141,7 @@
     function logMessage(msg) {
         const logBox = document.getElementById('logBox');
         const timestamp = new Date().toLocaleTimeString();
-        logBox.innerHTML += `\n[${timestamp}] ${msg}`;
+        logBox.innerHTML += `<br>[${timestamp}] ${msg}`;
         logBox.scrollTop = logBox.scrollHeight;
     }
 
@@ -163,13 +173,36 @@
         }
     }
 
+    // POST Request: Aim Payload API Dispatch Command 
+    async function aim() {
+        const url = `${getBaseUrl()}/api/aim`;
+        const payload = {
+            pan_angle: parseInt(document.getElementById('firePan').value) || 0,
+            tilt_angle: parseInt(document.getElementById('fireTilt').value) || 0,
+        };
+
+        logMessage(`POST aim command variables: ${JSON.stringify(payload)}`);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const data = await response.json();
+            updateUiStatus(data);
+            logMessage(`Aim command sent.`);
+        } catch (err) {
+            logMessage(`Error executing aim: ${err.message}`);
+        }
+    }
+
     // POST Request: Fire Payload API Dispatch Command 
     async function triggerFire() {
         const url = `${getBaseUrl()}/api/fire`;
         const payload = {
             speed: parseInt(document.getElementById('fireSpeed').value) || 0,
-            pan_angle: parseInt(document.getElementById('firePan').value) || 0,
-            tilt_angle: parseInt(document.getElementById('fireTilt').value) || 0,
             count: parseInt(document.getElementById('fireCount').value) || 0
         };
 
@@ -184,7 +217,7 @@
             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
             const data = await response.json();
             updateUiStatus(data);
-            logMessage(`Fire operational payload verified by hardware.`);
+            logMessage(`Fire cmd sent.`);
         } catch (err) {
             logMessage(`Error executing fire: ${err.message}`);
         }

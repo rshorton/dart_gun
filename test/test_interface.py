@@ -10,9 +10,15 @@ fire_cmd = {
     "name": "fire",
     "args": {
         "speed": 3,
-        "pan_angle": 0,
-        "tilt_angle": 0,
         "count": 1
+    }
+}
+
+aim_cmd = {
+    "name": "aim",
+    "args": {
+        "pan_angle": 0,
+        "tilt_angle": 0
     }
 }
 
@@ -70,17 +76,14 @@ def test_fire_all(ser):
 def test_aim(ser):
 
     delay = 0.4
-
-    fire_cmd["args"]["count"] = 0
-
     angle_list = [(10, -10), (30, -10), (45, -10), (55, -10)]
 
     for pan, tilt in angle_list:
         print(f"pan, tilt: {pan}, {tilt}")
 
-        fire_cmd["args"]["pan_angle"] = pan
-        fire_cmd["args"]["tilt_angle"] = tilt
-        send_and_receive(ser, fire_cmd)
+        aim_cmd["args"]["pan_angle"] = pan
+        aim_cmd["args"]["tilt_angle"] = tilt
+        send_and_receive(ser, aim_cmd)
 
         time.sleep(delay)
 
@@ -97,25 +100,29 @@ def test_all(ser):
     retry_interval = 0.1
     retry_attempts = 50
 
-    # Send fire command, but wait each time for the gun
-    # to finish the previous cmd
+    # Send aim command and then fire command. Commands should
+    # retry as needed for the gun to finish the previous fire cmd
+    send_with_retry(ser, aim_cmd, retry_interval, retry_attempts)
     send_with_retry(ser, fire_cmd, retry_interval, retry_attempts)
 
-    fire_cmd["args"]["pan_angle"] = 25
+    aim_cmd["args"]["pan_angle"] = 25
+    send_with_retry(ser, aim_cmd, retry_interval, retry_attempts)
     send_with_retry(ser, fire_cmd, retry_interval, retry_attempts)
 
-    fire_cmd["args"]["pan_angle"] = 60
+    aim_cmd["args"]["pan_angle"] = 60
+    send_with_retry(ser, aim_cmd, retry_interval, retry_attempts)
     send_with_retry(ser, fire_cmd, retry_interval, retry_attempts)
 
-    fire_cmd["args"]["pan_angle"] = -60
+    aim_cmd["args"]["pan_angle"] = -60
+    send_with_retry(ser, aim_cmd, retry_interval, retry_attempts)
     send_with_retry(ser, fire_cmd, retry_interval, retry_attempts)
 
     send_with_retry_until_not_pending(ser, get_status_cmd, retry_interval, retry_attempts)
 
     time.sleep(1.0)
 
-    reset_cmd = {"name": "reset"}
-    send_and_receive(ser, reset_cmd)
+    #reset_cmd = {"name": "reset"}
+    #send_and_receive(ser, reset_cmd)
 
     time.sleep(2.0)
 
@@ -148,9 +155,9 @@ def main():
     #test_fire(ser)
     #test_fire_all(ser)
 
-    test_aim(ser)
+    #test_aim(ser)
     #test_reset(ser)
-    #test_all(ser)
+    test_all(ser)
 
     ser.close()
     logging.info("Testing sequence finished cleanly.")

@@ -33,23 +33,35 @@ Configure your serial monitor to 115200 baud and set the line ending option to N
 
 #### Commands
 
+**Aim** - Sends command to aim gun
+
+* **Send:**
+
+  {"name":"aim", "args":{"pan_angle": (-45 to 45 degress),"tilt_angle": (-30 to 30 degrees)}}
+
+* **Receives:**
+
+  {"empty": (true if no more darts in magazine),"pan_angle": (angle),"tilt_angle": (angle),"cmd_result": 0-success, 1-busy, 2-failed}
+
 **Fire** - Sends command to fire one or more darts
 
 * **Send:**
     
-  {"name":"fire", "args":{"speed": (3-full, 2-med, 1-low),"pan_angle": (-45 to 45 degress),"tilt_angle": (-30 to 30 degrees),"count": (number of times to fire>)}}
-    
+  {"name":"fire", "args":{"speed": (3-full, 2-med, 1-low),"count": (number of times to fire>)}}
+
 * **Receives:**
 
-  {"empty": (true if no more darts in magazine),"pan_angle": (angle),"tilt_angle": (angle)}
-    
+  {"empty": (true if no more darts in magazine),"pan_angle": (angle),"tilt_angle": (angle),"cmd_result": 0-success, 1-busy, 2-failed}
+
 **Reset** - Resets pan-tilt position
 
 * **Send:**
 
   {"name":"reset"}
 
-* **Receive:** same as fire command
+* **Receives:** 
+
+  {"empty": (true if no more darts in magazine),"pan_angle": (angle),"tilt_angle": (angle)}
     
 **Get Status** - Gets the status
 
@@ -57,7 +69,9 @@ Configure your serial monitor to 115200 baud and set the line ending option to N
 
   {"name":"get_status"}
 
-* **Receive:** same as fire command
+* **Receives:**
+
+  {"empty": (true if no more darts in magazine),"pan_angle": (angle),"tilt_angle": (angle)}
 
 ### REST
 
@@ -92,7 +106,7 @@ The latter avoids accidently checking in the pw in the platform.ini file.
 
 #### Reset
 
-* **Method:** POST /api/resetPayload
+* **Method:** POST /api/reset
 
 * **Sent:** None
 
@@ -104,6 +118,21 @@ The latter avoids accidently checking in the pw in the platform.ini file.
  curl -X POST http://192.168.1.159/api/reset
 ```
 
+#### Aim
+
+* **Method:** POST /api/aim
+
+* **Header Required:** Content-Type: application/jsonPayload
+
+* **Sent:**
+
+* json{
+  "pan_angle": see serial aim command,
+  "tilt_angle": see serial aim command,
+}
+
+* **Response (200 OK):** same as for serial commands
+
 #### Fire
 
 * **Method:** POST /api/fire
@@ -113,20 +142,24 @@ The latter avoids accidently checking in the pw in the platform.ini file.
 * **Sent:**
 
 * json{
-  "speed": <see serial fire command>,
-  "pan_angle": <see serial fire command>,
-  "tilt_angle":<see serial fire command>,
-  "count": <see serial fire command>
+  "speed": see serial fire command,
+  "count": see serial fire command
 }
 
 * **Response (200 OK):** same as for serial commands
 
-* **Test command:**
+**Command examples:**
+
+```
+curl -X POST http://192.168.1.159/api/aim \
+     -H "Content-Type: application/json" \
+     -d '{"pan_angle":-30,"tilt_angle":15}'
+```
 
 ```
 curl -X POST http://192.168.1.159/api/fire \
      -H "Content-Type: application/json" \
-     -d '{"speed":3,"pan_angle":-30,"tilt_angle":15,"count":1}'
+     -d '{"speed":3,"count":1}'
 ```
 
 ### WebUI

@@ -72,7 +72,7 @@ const char* GunControlStateMachine::firing_state_to_str(GunControlStateMachine::
 }
 
 // Returns True if command accepted (ie not busy with previous cmd)
-GunControlStateMachine::CmdResult GunControlStateMachine::fire_cmd(uint8_t speed, int8_t pan_angle, int8_t tilt_angle, uint8_t count)
+GunControlStateMachine::CmdResult GunControlStateMachine::fire_cmd(uint8_t speed, uint8_t count)
 {
     // Fail if no more darts
     if (dart_magazine_empty_) {
@@ -92,6 +92,20 @@ GunControlStateMachine::CmdResult GunControlStateMachine::fire_cmd(uint8_t speed
     }
 
     fire_cnt_ = count;
+
+    return CmdResult::CMD_RESULT_SUCCESS;
+}
+
+GunControlStateMachine::CmdResult GunControlStateMachine::aim_cmd(int8_t pan_angle, int8_t tilt_angle)
+{
+    // Fail if no more darts
+    if (dart_magazine_empty_) {
+        return CmdResult::CMD_RESULT_FAILED;
+
+    // Reject if fire pending
+    } else  if (fire_cnt_) {
+        return CmdResult::CMD_RESULT_BUSY;
+    }
 
     aiming_control_.set_target_pan_angle(pan_angle);
     aiming_control_.set_target_tilt_angle(tilt_angle);
@@ -125,7 +139,6 @@ void GunControlStateMachine::enter_state(FiringState new_state)
 {
     firing_state_ = new_state;
     state_timer_start_ = millis();
-
     Logging::log_message(LOG_LVL_INFO, "GSSM: new state: %s", firing_state_to_str(firing_state_));
 }
 
@@ -178,6 +191,12 @@ void GunControlStateMachine::enter_flywheel_spinup_state()
 void GunControlStateMachine::update_aiming()
 {
     bool new_target = false;
+
+    if (dart_magazine_empty_) {
+        aiming_control_.set_target_pan_angle(0.0f);
+        aiming_control_.set_target_tilt_angle(0.0f);
+    }
+
     aiming_control_.update_aiming(new_target);
     update_aiming_laser_state(new_target);
 }
@@ -194,12 +213,12 @@ void GunControlStateMachine::update()
                 hw_if_.set_flywheel_off();
                 fire_cnt_ = 0;
                 dart_magazine_empty_ = true;
-                return;
+                break;
             }
         dart_magazine_empty_ = false;
 
         if (fire_cnt_ == 0) {
-            return;
+            break;
         }
 
         update_aiming_laser_state(true);

@@ -52,7 +52,8 @@ public:
     GunControlStateMachine(GunHardwareInterface &hw_if, AimingControl &aiming_control);
 
     void update();
-    CmdResult fire_cmd(uint8_t speed, int8_t pan_angle, int8_t tilt_angle, uint8_t count);
+    CmdResult fire_cmd(uint8_t speed, uint8_t count);
+    CmdResult aim_cmd(int8_t pan_angle, int8_t tilt_angle);
     CmdResult reset_cmd();
 
     bool is_magazine_empty() const {

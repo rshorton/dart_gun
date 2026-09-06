@@ -36,7 +36,7 @@ const uint32_t TILT_MOVE_MS_PER_DEG = 16;
 
 const uint32_t PAN_TILT_MOVE_MIN_MS = 75;
 
-const float ANGLE_AIM_THRESH_DEG = 1.5f;
+const float ANGLE_AIM_THRESH_DEG = 2.0f;
 }
 
 template <typename T>
@@ -81,7 +81,7 @@ bool AimingControl::read_aiming_servos()
     }
     cur_tilt_angle_ = angle;
 
-    Logging::log_message(LOG_LVL_DEBUG, "read_aiming_servos: cur_pan angle: %f, cur_tilt_angle: %f",
+    Logging::log_message(LOG_LVL_INFO, "read_aiming_servos: cur_pan angle: %f, cur_tilt_angle: %f",
                          cur_pan_angle_, cur_tilt_angle_);
 
     return true;
@@ -107,6 +107,7 @@ bool AimingControl::aim(bool wait)
         return false;
     }
 
+    Logging::log_message(LOG_LVL_INFO, "aim: new target");
     aimed_ = false;
 
     // The movement needs the current position to accurately calculate the
@@ -146,18 +147,14 @@ void AimingControl::update_aiming(bool &new_target)
     new_target = aim(false);
 
     // If no change in the targeting, then check if pointed at target
-    if (new_target) {
-        aimed_ = false;
-        Logging::log_message(LOG_LVL_INFO, "AimingControl, new target");
-
-    } else if (!aimed_) {
+    if (!new_target && !aimed_) {
         auto now_ms = millis();
         if (now_ms > last_position_ck_ + AIMING_POSITION_CK_MS) {
             last_position_ck_ = now_ms;
 
             if (is_at_target_position()) {
                 aimed_ = true;
-                Logging::log_message(LOG_LVL_INFO, "AimingControl, now aimed");
+                Logging::log_message(LOG_LVL_INFO, "update_aiming: aimed");
             }
         }
     }
