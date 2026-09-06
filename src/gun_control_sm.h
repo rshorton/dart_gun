@@ -44,6 +44,8 @@ private:
 
     const uint32_t TARGETING_LASER_ON_TIMEOUT_MS = 10000;
 
+    const uint32_t BARREL_FLASH_PERIOD_MS = 200;
+
     enum class FiringState {FIRING_STATE_INIT, FIRING_STATE_FLYWHEEL_SPINUP, FIRING_STATE_WAIT_FOR_AIMED,
                             FIRING_STATE_PUSH_DART, FIRING_STATE_RESET, FIRING_STATE_WAIT_DART_READY,
                             FIRING_STATE_FLYWHEEL_TIMEOUT};  
@@ -70,6 +72,7 @@ public:
 private:
     void update_aiming();
     void update_aiming_laser_state(bool should_enable);
+    void update_barrel_led();
 
     void enter_state(FiringState new_state);
     void enter_init_state();
@@ -90,6 +93,9 @@ private:
     uint32_t state_timer_start_{0};
 
     uint32_t targeting_laser_on_time_{0};
+
+    bool barrel_led_flash_state_{false};
+    uint32_t last_barrel_led_update_{0};
 
     uint8_t fire_cnt_{0};
     uint8_t req_fly_wheel_speed_{0};

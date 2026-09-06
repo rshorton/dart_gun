@@ -135,6 +135,23 @@ void GunControlStateMachine::update_aiming_laser_state(bool should_enable)
     }
 }
 
+void GunControlStateMachine::update_barrel_led()
+{
+    // Fast blink barrel led when magazine is empty
+    if (dart_magazine_empty_) {
+        auto now = millis();
+        if (now - last_barrel_led_update_ > BARREL_FLASH_PERIOD_MS) {
+            last_barrel_led_update_ = now;
+            barrel_led_flash_state_ = !barrel_led_flash_state_;
+            hw_if_.set_barrel_led(barrel_led_flash_state_);
+        }
+
+    // Otherwise turn it on during firing
+    } else {
+        hw_if_.set_barrel_led(firing_state_ == FiringState::FIRING_STATE_PUSH_DART);
+    }
+}
+
 void GunControlStateMachine::enter_state(FiringState new_state)
 {
     firing_state_ = new_state;
@@ -163,14 +180,12 @@ void GunControlStateMachine::enter_wait_dart_ready_state()
 void GunControlStateMachine::enter_reset_state()
 {
     hw_if_.set_push_dart_into_flywheel(false, PUSH_DART_DURATION);
-    hw_if_.set_barrel_led(false);
     enter_state(FiringState::FIRING_STATE_RESET);
 }
 
 void GunControlStateMachine::enter_push_dart_state()
 {
     hw_if_.set_push_dart_into_flywheel(true, PUSH_DART_DURATION);
-    hw_if_.set_barrel_led(true);
     enter_state(FiringState::FIRING_STATE_PUSH_DART);
 }
 
@@ -285,5 +300,7 @@ void GunControlStateMachine::update()
 
     default:
         break;
-  }      
+  }
+
+  update_barrel_led();
 }
