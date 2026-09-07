@@ -57,6 +57,7 @@ void CommandAPI::get_status_json(JsonDocument& doc)
     doc["pending"] = control_sm_.is_firing_pending();
     doc["empty"] = control_sm_.is_magazine_empty();
     doc["aimed"] = aiming_control_.is_aimed();
+    aiming_control_.refresh_position_status();
     doc["pan_angle"] = aiming_control_.get_cur_pan_angle();
     doc["tilt_angle"] = aiming_control_.get_cur_tilt_angle();
 }
@@ -85,6 +86,8 @@ void CommandAPI::send_cmd_response(GunControlStateMachine::CmdResult result)
 
 void CommandAPI::execute_command(String jsonString)
 {
+    Logging::log_message(LOG_LVL_INFO, "Api, serial cmd: %s", jsonString.c_str());
+
     StaticJsonDocument<200> doc;
     DeserializationError error = deserializeJson(doc, jsonString);
 
@@ -99,11 +102,11 @@ void CommandAPI::execute_command(String jsonString)
 
     if (strcmp(command_name, "aim") == 0) {
         // Extract parameters
-        int8_t pan_angle = doc["args"]["pan_angle"] | 0;
-        int8_t tilt_angle = doc["args"]["tilt_angle"] | 0;
+        float pan_angle = doc["args"]["pan_angle"] | 0.0f;
+        float tilt_angle = doc["args"]["tilt_angle"] | 0.0f;
 
         auto result = control_sm_.aim_cmd(pan_angle, tilt_angle);
-        Logging::log_message(LOG_LVL_INFO, "Api, serial aim: pan: %d, tilt: %d, result: %s",
+        Logging::log_message(LOG_LVL_INFO, "Api, serial aim: pan: %f, tilt: %f, result: %s",
                              pan_angle, tilt_angle,
                              GunControlStateMachine::get_cmd_result_str(result));
 
@@ -206,11 +209,11 @@ void CommandAPI::handle_rest_aim()
     }
 
     // Extract parameters securely from the incoming REST request body
-    int8_t pan_angle = doc["pan_angle"] | 0;
-    int8_t tilt_angle = doc["tilt_angle"] | 0;
+    float pan_angle = doc["pan_angle"] | 0.0f;
+    float tilt_angle = doc["tilt_angle"] | 0.0f;
 
     auto result = api->control_sm_.aim_cmd(pan_angle, tilt_angle);
-    Logging::log_message(LOG_LVL_INFO, "Api, rest aim: pan: %d, tilt: %d, result: %s",
+    Logging::log_message(LOG_LVL_INFO, "Api, rest aim: pan: %f, tilt: %f, result: %s",
                          pan_angle, tilt_angle,
                          GunControlStateMachine::get_cmd_result_str(result));
 

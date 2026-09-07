@@ -55,7 +55,7 @@ public:
 
     void update();
     CmdResult fire_cmd(uint8_t speed, uint8_t count);
-    CmdResult aim_cmd(int8_t pan_angle, int8_t tilt_angle);
+    CmdResult aim_cmd(float pan_angle, float tilt_angle);
     CmdResult reset_cmd();
 
     bool is_magazine_empty() const {

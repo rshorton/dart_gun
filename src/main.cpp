@@ -39,7 +39,7 @@ namespace {
 
 SerialServo servo_fire(Serial1, 1, 240, 1000, 0.0f, false);
 // +degrees tilts up
-SerialServo servo_tilt(Serial1, 2, 240, 1000, 123.3f, false);
+SerialServo servo_tilt(Serial1, 2, 240, 1000, 123.3f -1.0f, false);
 // +degrees pans left
 SerialServo servo_pan(Serial1, 3, 240, 1000, 143.3f, false);
 

@@ -52,9 +52,13 @@ public:
         return cur_tilt_angle_;
     }
 
+    void refresh_position_status() {
+        read_aiming_servos();
+    }
+
 private:
-    bool is_at_target_position();
     bool read_aiming_servos();
+    bool is_at_target_position();
 
     GunHardwareInterface &hw_if_;
 

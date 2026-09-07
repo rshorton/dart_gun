@@ -22,6 +22,10 @@ aim_cmd = {
     }
 }
 
+status_cmd = {"name": "get_status"}
+
+reset_cmd = {"name": "reset"}
+
 def send_and_receive(ser, payload):
     """Encodes JSON payload, writes to serial port, and prints response packet."""
     raw_send = json.dumps(payload) + "\n"
@@ -75,8 +79,9 @@ def test_fire_all(ser):
 
 def test_aim(ser):
 
-    delay = 0.4
+    delay = 1.0
     angle_list = [(10, -10), (30, -10), (45, -10), (55, -10)]
+    #angle_list = [(0, 3.5)]
 
     for pan, tilt in angle_list:
         print(f"pan, tilt: {pan}, {tilt}")
@@ -86,15 +91,14 @@ def test_aim(ser):
         send_and_receive(ser, aim_cmd)
 
         time.sleep(delay)
+        send_and_receive(ser, status_cmd)        
 
 def test_reset(ser):
-    reset_cmd = {"name": "reset"}
     send_and_receive(ser, reset_cmd)
     time.sleep(2.0)
 
 def test_all(ser):
-    get_status_cmd = {"name": "get_status"}
-    send_and_receive(ser, get_status_cmd)
+    send_and_receive(ser, status_cmd)
     time.sleep(1.0)
 
     retry_interval = 0.1
@@ -117,11 +121,10 @@ def test_all(ser):
     send_with_retry(ser, aim_cmd, retry_interval, retry_attempts)
     send_with_retry(ser, fire_cmd, retry_interval, retry_attempts)
 
-    send_with_retry_until_not_pending(ser, get_status_cmd, retry_interval, retry_attempts)
+    send_with_retry_until_not_pending(ser, status_cmd, retry_interval, retry_attempts)
 
     time.sleep(1.0)
 
-    #reset_cmd = {"name": "reset"}
     #send_and_receive(ser, reset_cmd)
 
     time.sleep(2.0)
@@ -155,9 +158,9 @@ def main():
     #test_fire(ser)
     #test_fire_all(ser)
 
-    #test_aim(ser)
+    test_aim(ser)
     #test_reset(ser)
-    test_all(ser)
+    #test_all(ser)
 
     ser.close()
     logging.info("Testing sequence finished cleanly.")

@@ -96,7 +96,7 @@ GunControlStateMachine::CmdResult GunControlStateMachine::fire_cmd(uint8_t speed
     return CmdResult::CMD_RESULT_SUCCESS;
 }
 
-GunControlStateMachine::CmdResult GunControlStateMachine::aim_cmd(int8_t pan_angle, int8_t tilt_angle)
+GunControlStateMachine::CmdResult GunControlStateMachine::aim_cmd(float pan_angle, float tilt_angle)
 {
     // Fail if no more darts
     if (dart_magazine_empty_) {
