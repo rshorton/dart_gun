@@ -35,7 +35,7 @@ public:
     enum class CmdResult {CMD_RESULT_SUCCESS, CMD_RESULT_FAILED, CMD_RESULT_BUSY};
 
 private:
-    const uint32_t FLYWHEEL_SPIN_UP_DELAY = 800;
+    const uint32_t FLYWHEEL_SPIN_UP_DELAY = 1000;
     const uint32_t PUSH_DART_DURATION = 500;
     const uint32_t PUSH_DART_DELAY = (PUSH_DART_DURATION + 100);
     const uint32_t RESET_DELAY = (PUSH_DART_DURATION + 100);
