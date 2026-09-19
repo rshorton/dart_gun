@@ -28,7 +28,7 @@ namespace
 {
 const uint32_t AIMING_POSITION_CK_MS = 200;
 
-const float TILT_ABS_MAX_DEG = 15.0f;
+const float TILT_ABS_MAX_DEG = 25.0f;
 const float PAN_ABS_MAX_DEG = 90.0f;
 
 const uint32_t PAN_MOVE_MS_PER_DEG = 16;
