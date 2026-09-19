@@ -41,7 +41,7 @@ SerialServo servo_fire(Serial1, 1, 240, 1000, 0.0f, false);
 // +degrees tilts up
 SerialServo servo_tilt(Serial1, 2, 240, 1000, 123.3f -1.0f, false);
 // +degrees pans left
-SerialServo servo_pan(Serial1, 3, 240, 1000, 143.3f, false);
+SerialServo servo_pan(Serial1, 3, 240, 1000, 143.3f - 3.75f, false);
 
 GunHardwareInterface hw_if(servo_fire, servo_tilt, servo_pan);
 AimingControl aiming_control(hw_if);
@@ -85,4 +85,9 @@ void loop()
 {
   cmd_api.update();
   control_sm.update();
+
+  if (hw_if.wait_for_button_press(0)) {
+    control_sm.aim_cmd(0.0f, 0.0f);
+    control_sm.fire_cmd(3, 1);
+  }
 }
